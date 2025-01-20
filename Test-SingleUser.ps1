@@ -34,3 +34,36 @@ catch {
     Write-Host "Error adding E5 license: $($_.Exception.Message)" -ForegroundColor Red
     exit
 }
+
+# Wait for license propagation
+Write-Host "Waiting 30 seconds for license changes to propagate..."
+Start-Sleep -Seconds 30
+
+# Verify E5 license was added successfully
+$updatedUser = Get-MsolUser -UserPrincipalName $testUserEmail
+$hasE5 = ($updatedUser.Licenses).AccountSkuId -match $E5_SKU
+
+if ($hasE5) {
+    Write-Host "E5 license verified. Proceeding to remove E3 license..." -ForegroundColor Green
+    
+    # Remove E3 license
+    try {
+        Set-MsolUserLicense -UserPrincipalName $testUserEmail -RemoveLicenses $E3_SKU
+        Write-Host "Successfully removed E3 license" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "Error removing E3 license: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Please remove E3 license manually after verifying E5 functionality" -ForegroundColor Yellow
+    }
+}
+else {
+    Write-Host "E5 license was not found after waiting! Please check the account manually." -ForegroundColor Red
+    exit
+}
+
+# Final verification
+$finalUser = Get-MsolUser -UserPrincipalName $testUserEmail
+Write-Host "`nFinal license status for $testUserEmail:" -ForegroundColor Cyan
+$finalUser.Licenses | Format-Table -Property AccountSkuId
+
+Write-Host "Test completed!" -ForegroundColor Green
