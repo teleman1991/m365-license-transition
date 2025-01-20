@@ -14,6 +14,8 @@ $totalUsers = $E3Users.Count
 $processedUsers = 0
 $successfulE5Adds = 0
 $failedE5Adds = 0
+$successfulE3Removals = 0
+$failedE3Removals = 0
 
 # Add E5 licenses to users with E3
 foreach ($user in $E3Users) {
@@ -30,5 +32,41 @@ foreach ($user in $E3Users) {
     catch {
         Write-Host "Error adding E5 license to $($user.UserPrincipalName): $($_.Exception.Message)" -ForegroundColor Red
         $failedE5Adds++
+        continue
     }
 }
+
+# Wait for license propagation
+Write-Host "`nWaiting 30 seconds for license changes to propagate..."
+Start-Sleep -Seconds 30
+
+# Get all users with both E3 and E5 licenses
+Write-Host "Getting users with both E3 and E5 licenses..."
+$DualLicensedUsers = Get-MsolUser -All | Where-Object {
+    ($_.Licenses).AccountSkuId -match $E3_SKU -and ($_.Licenses).AccountSkuId -match $E5_SKU
+}
+
+# Remove E3 licenses from users who now have E5
+foreach ($user in $DualLicensedUsers) {
+    try {
+        Write-Host "Removing E3 license from $($user.UserPrincipalName)..."
+        Set-MsolUserLicense -UserPrincipalName $user.UserPrincipalName -RemoveLicenses $E3_SKU
+        Write-Host "Successfully removed E3 license from $($user.UserPrincipalName)" -ForegroundColor Green
+        $successfulE3Removals++
+    }
+    catch {
+        Write-Host "Error removing E3 license from $($user.UserPrincipalName): $($_.Exception.Message)" -ForegroundColor Red
+        $failedE3Removals++
+    }
+}
+
+# Print summary
+Write-Host "`n=== License Transition Summary ===" -ForegroundColor Cyan
+Write-Host "Total users processed: $totalUsers"
+Write-Host "Successful E5 additions: $successfulE5Adds"
+Write-Host "Failed E5 additions: $failedE5Adds"
+Write-Host "Successful E3 removals: $successfulE3Removals"
+Write-Host "Failed E3 removals: $failedE3Removals"
+Write-Host "=================================" -ForegroundColor Cyan
+
+Write-Host "`nLicense transition completed!" -ForegroundColor Green
