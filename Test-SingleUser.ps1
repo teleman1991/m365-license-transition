@@ -19,3 +19,18 @@ try {
     }
     Write-Host "Test user found with E3 license" -ForegroundColor Green
 }
+catch {
+    Write-Host "Error finding test user: $($_.Exception.Message)" -ForegroundColor Red
+    exit
+}
+
+# Add E5 license to test user
+try {
+    Write-Host "Adding E5 license to $testUserEmail..."
+    Set-MsolUserLicense -UserPrincipalName $testUserEmail -AddLicenses $E5_SKU
+    Write-Host "Successfully added E5 license" -ForegroundColor Green
+}
+catch {
+    Write-Host "Error adding E5 license: $($_.Exception.Message)" -ForegroundColor Red
+    exit
+}
