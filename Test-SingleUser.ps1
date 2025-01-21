@@ -1,12 +1,12 @@
 # Connect to Microsoft 365
 Connect-MsolService
 
-# Get available license information first
-Write-Host "`nAvailable licenses in tenant:" -ForegroundColor Cyan
-Get-MsolAccountSku | Format-Table -AutoSize AccountSkuId, SkuPartNumber, ActiveUnits, ConsumedUnits
+# Define SKU IDs directly
+$E3_SKU = "compassdatacenter:SPE_E3"
+$E5_SKU = "compassdatacenter:Microsoft_365_E5_(no_Teams)"
 
 # Define test user
-$testUserEmail = "amonroe@compassdatacenters.com" # Replace with your test user's email
+$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
 
 # Get current user license state
 Write-Host "`nCurrent licenses for $($testUserEmail):" -ForegroundColor Cyan
@@ -18,17 +18,6 @@ catch {
     Write-Host "Error finding test user: $($_.Exception.Message)" -ForegroundColor Red
     exit
 }
-
-# Get tenant name from user license format
-$tenantName = ($testUser.Licenses[0].AccountSkuId -split ':')[0]
-
-# Define SKU IDs using tenant prefix
-$E3_SKU = "$tenantName`:ENTERPRISEPACK" # E3 License
-$E5_SKU = "$tenantName`:ENTERPRISE_PREMIUM" # E5 License
-
-Write-Host "`nUsing the following SKU IDs:" -ForegroundColor Yellow
-Write-Host "E3 SKU: $($E3_SKU)"
-Write-Host "E5 SKU: $($E5_SKU)"
 
 # Verify test user has E3 license
 $hasE3 = ($testUser.Licenses).AccountSkuId -contains $E3_SKU
