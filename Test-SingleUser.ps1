@@ -2,17 +2,25 @@
 Connect-MsolService
 
 # Define SKU IDs for licenses
-$E3_SKU = "05e9a617-0261-4cee-bb44-138d3ef5d965" # Enterprise E3
-$E5_SKU = "18a4bd3f-0b5b-4887-b04f-61dd0ee15f5e" # Enterprise E5
+$E3_SKU_1 = "6fd2c87f-b296-42f0-b197-1e91e994b900" # Enterprise E3 (older)
+$E3_SKU_2 = "05e9a617-0261-4cee-bb44-138d3ef5d965" # Enterprise E3 (newer)
+$E5_SKU = "c7df2760-2c81-4ef7-b578-5b5392b571df" # Enterprise E5
 
 # Define test user
-$testUserEmail = "amonroe@compassdatacenters.com" # Replace with your test user's email
+$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
 
 # Verify test user exists and has E3 license
 Write-Host "Checking test user $testUserEmail..."
 try {
     $testUser = Get-MsolUser -UserPrincipalName $testUserEmail
-    $hasE3 = ($testUser.Licenses).AccountSkuId -match $E3_SKU
+    
+    # Check for either E3 SKU
+    $hasE3 = ($testUser.Licenses).AccountSkuId -match $E3_SKU_1 -or ($testUser.Licenses).AccountSkuId -match $E3_SKU_2
+    
+    # Debug output
+    Write-Host "Current licenses:" -ForegroundColor Yellow
+    $testUser.Licenses | Format-Table -Property AccountSkuId
+    
     if (-not $hasE3) {
         Write-Host "Test user does not have an E3 license! Exiting..." -ForegroundColor Red
         exit
@@ -46,9 +54,14 @@ $hasE5 = ($updatedUser.Licenses).AccountSkuId -match $E5_SKU
 if ($hasE5) {
     Write-Host "E5 license verified. Proceeding to remove E3 license..." -ForegroundColor Green
     
-    # Remove E3 license
+    # Remove E3 license - try both SKUs
     try {
-        Set-MsolUserLicense -UserPrincipalName $testUserEmail -RemoveLicenses $E3_SKU
+        if (($updatedUser.Licenses).AccountSkuId -match $E3_SKU_1) {
+            Set-MsolUserLicense -UserPrincipalName $testUserEmail -RemoveLicenses $E3_SKU_1
+        }
+        if (($updatedUser.Licenses).AccountSkuId -match $E3_SKU_2) {
+            Set-MsolUserLicense -UserPrincipalName $testUserEmail -RemoveLicenses $E3_SKU_2
+        }
         Write-Host "Successfully removed E3 license" -ForegroundColor Green
     }
     catch {
