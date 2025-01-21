@@ -7,7 +7,7 @@ $E3_SKU_2 = "05e9a617-0261-4cee-bb44-138d3ef5d965" # Enterprise E3 (newer)
 $E5_SKU = "c7df2760-2c81-4ef7-b578-5b5392b571df" # Enterprise E5
 
 # Define test user
-$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
+$testUserEmail = "amonroe@compassdatacenters.com" # Replace with your test user's email
 
 # Verify test user exists and has E3 license
 Write-Host "Checking test user $testUserEmail..."
