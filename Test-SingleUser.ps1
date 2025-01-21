@@ -6,7 +6,7 @@ Write-Host "`nAvailable licenses in tenant:" -ForegroundColor Cyan
 Get-MsolAccountSku | Format-Table -AutoSize AccountSkuId, SkuPartNumber, ActiveUnits, ConsumedUnits
 
 # Define test user
-$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
+$testUserEmail = "amonroe@compassdatacenters.com" # Replace with your test user's email
 
 # Get current user license state
 Write-Host "`nCurrent licenses for $($testUserEmail):" -ForegroundColor Cyan
