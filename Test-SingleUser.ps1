@@ -13,95 +13,45 @@ Import-Module Microsoft.Graph.Identity.DirectoryManagement
 # Connect to Microsoft Graph
 Connect-MgGraph -Scopes "User.ReadWrite.All", "Directory.ReadWrite.All"
 
-# Define SKU IDs
-
-$E3_SKU = "05e9a617-0261-4cee-bb44-138d3ef5d965" # Enterprise E3
-$E5_SKU = "18a4bd3f-0b5b-4887-b04f-61dd0ee15f5e" # Enterprise E5
-#$E3_SKU = "compassdatacenter:SPE_E3"
-#$E5_SKU = "compassdatacenter:Microsoft_365_E5_(no_Teams)"
+# Get all available SKUs first
+Write-Host "`nAll available licenses in tenant:" -ForegroundColor Cyan
+$allSkus = Get-MgSubscribedSku
+$allSkus | Format-Table -Property SkuId, SkuPartNumber, ConsumedUnits, PrepaidUnits
 
 # Define test user
-$testUserEmail = "amadmin@compassdatacenters.com" # Replace with your test user's email
+$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
 
 # Get current user license state
-Write-Host "`nCurrent licenses for $($testUserEmail):" -ForegroundColor Cyan
+Write-Host "`nFetching current licenses for $($testUserEmail)..." -ForegroundColor Cyan
 try {
-    $testUser = Get-MgUser -UserId $testUserEmail -Property AssignedLicenses
-    $testUserLicenses = Get-MgUserLicenseDetail -UserId $testUserEmail
-    $testUserLicenses | Format-Table -Property SkuId, SkuPartNumber
+    $testUser = Get-MgUser -UserId $testUserEmail -Property UserPrincipalName,AssignedLicenses
+    Write-Host "User found. Fetching detailed license information..." -ForegroundColor Green
+    
+    $userLicenses = Get-MgUserLicenseDetail -UserId $testUserEmail
+    Write-Host "`nDetailed license information:" -ForegroundColor Yellow
+    $userLicenses | Format-List -Property SkuId, SkuPartNumber, ServicePlans
+
+    # Pause for review
+    Write-Host "`nReview the license information above and press Enter to continue..." -ForegroundColor Cyan
+    Read-Host
 }
 catch {
     Write-Host "Error finding test user: $($_.Exception.Message)" -ForegroundColor Red
     exit
 }
 
-# Verify test user has E3 license
-$hasE3 = $testUserLicenses.AccountSkuId -contains $E3_SKU
-if (-not $hasE3) {
-    Write-Host "`nTest user does not have an E3 license! Exiting..." -ForegroundColor Red
-    Write-Host "Current licenses:" -ForegroundColor Yellow
-    $testUserLicenses | Format-Table -Property SkuId, SkuPartNumber
+# Display E3 and E5 SKUs we're looking for
+Write-Host "`nWe will be looking for these SKUs:" -ForegroundColor Yellow
+Write-Host "E3: compassdatacenter:SPE_E3"
+Write-Host "E5: compassdatacenter:Microsoft_365_E5_(no_Teams)"
+
+Write-Host "`nDo you want to continue with the license transition? (Y/N)" -ForegroundColor Yellow
+$continue = Read-Host
+
+if ($continue -ne "Y") {
+    Write-Host "Script terminated by user." -ForegroundColor Yellow
     exit
 }
-Write-Host "`nTest user found with E3 license" -ForegroundColor Green
-
-# Add E5 license to test user
-try {
-    Write-Host "`nAdding E5 license to $($testUserEmail)..."
-    $params = @{
-        addLicenses = @(
-            @{
-                skuId = $E5_SKU
-            }
-        )
-        removeLicenses = @()
-    }
-    Set-MgUserLicense -UserId $testUserEmail -BodyParameter $params
-    Write-Host "Successfully added E5 license" -ForegroundColor Green
-}
-catch {
-    Write-Host "Error adding E5 license: $($_.Exception.Message)" -ForegroundColor Red
-    exit
-}
-
-# Wait for license propagation
-Write-Host "`nWaiting 30 seconds for license changes to propagate..."
-Start-Sleep -Seconds 30
-
-# Verify E5 license was added successfully
-$updatedUserLicenses = Get-MgUserLicenseDetail -UserId $testUserEmail
-$hasE5 = $updatedUserLicenses.AccountSkuId -contains $E5_SKU
-
-if ($hasE5) {
-    Write-Host "`nE5 license verified. Proceeding to remove E3 license..." -ForegroundColor Green
-    
-    # Remove E3 license
-    try {
-        $params = @{
-            addLicenses = @()
-            removeLicenses = @(
-                $E3_SKU
-            )
-        }
-        Set-MgUserLicense -UserId $testUserEmail -BodyParameter $params
-        Write-Host "Successfully removed E3 license" -ForegroundColor Green
-    }
-    catch {
-        Write-Host "Error removing E3 license: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "Please remove E3 license manually after verifying E5 functionality" -ForegroundColor Yellow
-    }
-}
-else {
-    Write-Host "`nE5 license was not found after waiting! Please check the account manually." -ForegroundColor Red
-    exit
-}
-
-# Final verification
-$finalUserLicenses = Get-MgUserLicenseDetail -UserId $testUserEmail
-Write-Host "`nFinal license status for $($testUserEmail):" -ForegroundColor Cyan
-$finalUserLicenses | Format-Table -Property SkuId, SkuPartNumber
-
-Write-Host "`nTest completed!" -ForegroundColor Green
 
 # Disconnect from Microsoft Graph
 Disconnect-MgGraph
