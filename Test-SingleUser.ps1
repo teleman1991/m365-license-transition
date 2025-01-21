@@ -1,40 +1,48 @@
 # Connect to Microsoft 365
 Connect-MsolService
 
-# Define SKU IDs for licenses
-$E3_SKU_1 = "6fd2c87f-b296-42f0-b197-1e91e994b900" # Enterprise E3 (older)
-$E3_SKU_2 = "05e9a617-0261-4cee-bb44-138d3ef5d965" # Enterprise E3 (newer)
-$E5_SKU = "c7df2760-2c81-4ef7-b578-5b5392b571df" # Enterprise E5
+# Get available license information first
+Write-Host "`nAvailable licenses in tenant:" -ForegroundColor Cyan
+Get-MsolAccountSku | Format-Table -AutoSize AccountSkuId, SkuPartNumber, ActiveUnits, ConsumedUnits
 
 # Define test user
-$testUserEmail = "amonroe@compassdatacenters.com" # Replace with your test user's email
+$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
 
-# Verify test user exists and has E3 license
-Write-Host "Checking test user $testUserEmail..."
+# Get current user license state
+Write-Host "`nCurrent licenses for $testUserEmail:" -ForegroundColor Cyan
 try {
     $testUser = Get-MsolUser -UserPrincipalName $testUserEmail
-    
-    # Check for either E3 SKU
-    $hasE3 = ($testUser.Licenses).AccountSkuId -match $E3_SKU_1 -or ($testUser.Licenses).AccountSkuId -match $E3_SKU_2
-    
-    # Debug output
-    Write-Host "Current licenses:" -ForegroundColor Yellow
-    $testUser.Licenses | Format-Table -Property AccountSkuId
-    
-    if (-not $hasE3) {
-        Write-Host "Test user does not have an E3 license! Exiting..." -ForegroundColor Red
-        exit
-    }
-    Write-Host "Test user found with E3 license" -ForegroundColor Green
+    $testUser.Licenses | Format-Table -Property AccountSkuId, SkuPartNumber
 }
 catch {
     Write-Host "Error finding test user: $($_.Exception.Message)" -ForegroundColor Red
     exit
 }
 
+# Get tenant name from user license format
+$tenantName = ($testUser.Licenses[0].AccountSkuId -split ':')[0]
+
+# Define SKU IDs using tenant prefix
+$E3_SKU = "$tenantName`:ENTERPRISEPACK" # E3 License
+$E5_SKU = "$tenantName`:ENTERPRISE_PREMIUM" # E5 License
+
+Write-Host "`nUsing the following SKU IDs:" -ForegroundColor Yellow
+Write-Host "E3 SKU: $E3_SKU"
+Write-Host "E5 SKU: $E5_SKU"
+
+# Verify test user has E3 license
+$hasE3 = ($testUser.Licenses).AccountSkuId -contains $E3_SKU
+if (-not $hasE3) {
+    Write-Host "`nTest user does not have an E3 license! Exiting..." -ForegroundColor Red
+    Write-Host "Current licenses:" -ForegroundColor Yellow
+    $testUser.Licenses | Format-Table -Property AccountSkuId, SkuPartNumber
+    exit
+}
+Write-Host "`nTest user found with E3 license" -ForegroundColor Green
+
 # Add E5 license to test user
 try {
-    Write-Host "Adding E5 license to $testUserEmail..."
+    Write-Host "`nAdding E5 license to $testUserEmail..."
     Set-MsolUserLicense -UserPrincipalName $testUserEmail -AddLicenses $E5_SKU
     Write-Host "Successfully added E5 license" -ForegroundColor Green
 }
@@ -44,24 +52,19 @@ catch {
 }
 
 # Wait for license propagation
-Write-Host "Waiting 30 seconds for license changes to propagate..."
+Write-Host "`nWaiting 30 seconds for license changes to propagate..."
 Start-Sleep -Seconds 30
 
 # Verify E5 license was added successfully
 $updatedUser = Get-MsolUser -UserPrincipalName $testUserEmail
-$hasE5 = ($updatedUser.Licenses).AccountSkuId -match $E5_SKU
+$hasE5 = ($updatedUser.Licenses).AccountSkuId -contains $E5_SKU
 
 if ($hasE5) {
-    Write-Host "E5 license verified. Proceeding to remove E3 license..." -ForegroundColor Green
+    Write-Host "`nE5 license verified. Proceeding to remove E3 license..." -ForegroundColor Green
     
-    # Remove E3 license - try both SKUs
+    # Remove E3 license
     try {
-        if (($updatedUser.Licenses).AccountSkuId -match $E3_SKU_1) {
-            Set-MsolUserLicense -UserPrincipalName $testUserEmail -RemoveLicenses $E3_SKU_1
-        }
-        if (($updatedUser.Licenses).AccountSkuId -match $E3_SKU_2) {
-            Set-MsolUserLicense -UserPrincipalName $testUserEmail -RemoveLicenses $E3_SKU_2
-        }
+        Set-MsolUserLicense -UserPrincipalName $testUserEmail -RemoveLicenses $E3_SKU
         Write-Host "Successfully removed E3 license" -ForegroundColor Green
     }
     catch {
@@ -70,13 +73,13 @@ if ($hasE5) {
     }
 }
 else {
-    Write-Host "E5 license was not found after waiting! Please check the account manually." -ForegroundColor Red
+    Write-Host "`nE5 license was not found after waiting! Please check the account manually." -ForegroundColor Red
     exit
 }
 
 # Final verification
 $finalUser = Get-MsolUser -UserPrincipalName $testUserEmail
 Write-Host "`nFinal license status for $($testUserEmail):" -ForegroundColor Cyan
-$finalUser.Licenses | Format-Table -Property AccountSkuId
+$finalUser.Licenses | Format-Table -Property AccountSkuId, SkuPartNumber
 
-Write-Host "Test completed!" -ForegroundColor Green
+Write-Host "`nTest completed!" -ForegroundColor Green
