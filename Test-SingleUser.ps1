@@ -18,7 +18,7 @@ $E3_SKU = "compassdatacenter:SPE_E3"
 $E5_SKU = "compassdatacenter:Microsoft_365_E5_(no_Teams)"
 
 # Define test user
-$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
+$testUserEmail = "amadmin@compassdatacenters.com" # Replace with your test user's email
 
 # Get current user license state
 Write-Host "`nCurrent licenses for $($testUserEmail):" -ForegroundColor Cyan
