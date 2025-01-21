@@ -1,18 +1,31 @@
-# Connect to Microsoft 365
-Connect-MsolService
+# Install and import Microsoft Graph modules if not already installed
+If (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Users)) {
+    Install-Module Microsoft.Graph.Users -Force
+}
+If (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Identity.DirectoryManagement)) {
+    Install-Module Microsoft.Graph.Identity.DirectoryManagement -Force
+}
 
-# Define SKU IDs directly
+# Import required modules
+Import-Module Microsoft.Graph.Users
+Import-Module Microsoft.Graph.Identity.DirectoryManagement
+
+# Connect to Microsoft Graph
+Connect-MgGraph -Scopes "User.ReadWrite.All", "Directory.ReadWrite.All"
+
+# Define SKU IDs
 $E3_SKU = "compassdatacenter:SPE_E3"
 $E5_SKU = "compassdatacenter:Microsoft_365_E5_(no_Teams)"
 
 # Define test user
-$testUserEmail = "amadmin@compassdatacenters.com" # Replace with your test user's email
+$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
 
 # Get current user license state
 Write-Host "`nCurrent licenses for $($testUserEmail):" -ForegroundColor Cyan
 try {
-    $testUser = Get-MsolUser -UserPrincipalName $testUserEmail
-    $testUser.Licenses | Format-Table -Property AccountSkuId, SkuPartNumber
+    $testUser = Get-MgUser -UserId $testUserEmail -Property AssignedLicenses
+    $testUserLicenses = Get-MgUserLicenseDetail -UserId $testUserEmail
+    $testUserLicenses | Format-Table -Property SkuId, SkuPartNumber
 }
 catch {
     Write-Host "Error finding test user: $($_.Exception.Message)" -ForegroundColor Red
@@ -20,11 +33,11 @@ catch {
 }
 
 # Verify test user has E3 license
-$hasE3 = ($testUser.Licenses).AccountSkuId -contains $E3_SKU
+$hasE3 = $testUserLicenses.AccountSkuId -contains $E3_SKU
 if (-not $hasE3) {
     Write-Host "`nTest user does not have an E3 license! Exiting..." -ForegroundColor Red
     Write-Host "Current licenses:" -ForegroundColor Yellow
-    $testUser.Licenses | Format-Table -Property AccountSkuId, SkuPartNumber
+    $testUserLicenses | Format-Table -Property SkuId, SkuPartNumber
     exit
 }
 Write-Host "`nTest user found with E3 license" -ForegroundColor Green
@@ -32,7 +45,15 @@ Write-Host "`nTest user found with E3 license" -ForegroundColor Green
 # Add E5 license to test user
 try {
     Write-Host "`nAdding E5 license to $($testUserEmail)..."
-    Set-MsolUserLicense -UserPrincipalName $testUserEmail -AddLicenses $E5_SKU
+    $params = @{
+        addLicenses = @(
+            @{
+                skuId = $E5_SKU
+            }
+        )
+        removeLicenses = @()
+    }
+    Set-MgUserLicense -UserId $testUserEmail -BodyParameter $params
     Write-Host "Successfully added E5 license" -ForegroundColor Green
 }
 catch {
@@ -45,15 +66,21 @@ Write-Host "`nWaiting 30 seconds for license changes to propagate..."
 Start-Sleep -Seconds 30
 
 # Verify E5 license was added successfully
-$updatedUser = Get-MsolUser -UserPrincipalName $testUserEmail
-$hasE5 = ($updatedUser.Licenses).AccountSkuId -contains $E5_SKU
+$updatedUserLicenses = Get-MgUserLicenseDetail -UserId $testUserEmail
+$hasE5 = $updatedUserLicenses.AccountSkuId -contains $E5_SKU
 
 if ($hasE5) {
     Write-Host "`nE5 license verified. Proceeding to remove E3 license..." -ForegroundColor Green
     
     # Remove E3 license
     try {
-        Set-MsolUserLicense -UserPrincipalName $testUserEmail -RemoveLicenses $E3_SKU
+        $params = @{
+            addLicenses = @()
+            removeLicenses = @(
+                $E3_SKU
+            )
+        }
+        Set-MgUserLicense -UserId $testUserEmail -BodyParameter $params
         Write-Host "Successfully removed E3 license" -ForegroundColor Green
     }
     catch {
@@ -67,8 +94,11 @@ else {
 }
 
 # Final verification
-$finalUser = Get-MsolUser -UserPrincipalName $testUserEmail
+$finalUserLicenses = Get-MgUserLicenseDetail -UserId $testUserEmail
 Write-Host "`nFinal license status for $($testUserEmail):" -ForegroundColor Cyan
-$finalUser.Licenses | Format-Table -Property AccountSkuId, SkuPartNumber
+$finalUserLicenses | Format-Table -Property SkuId, SkuPartNumber
 
 Write-Host "`nTest completed!" -ForegroundColor Green
+
+# Disconnect from Microsoft Graph
+Disconnect-MgGraph
