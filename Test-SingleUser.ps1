@@ -19,7 +19,7 @@ $allSkus = Get-MgSubscribedSku
 $allSkus | Format-Table -Property SkuId, SkuPartNumber, ConsumedUnits, PrepaidUnits
 
 # Define test user
-$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
+$testUserEmail = "amadmin@compassdatacenters.com" # Replace with your test user's email
 
 # Get current user license state
 Write-Host "`nFetching current licenses for $($testUserEmail)..." -ForegroundColor Cyan
