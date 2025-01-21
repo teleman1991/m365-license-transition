@@ -2,11 +2,11 @@
 Connect-MsolService
 
 # Define SKU IDs for licenses
-$E3_SKU = "05e9a617-0261-4cee-bb44-138d3ef5d965" # Enterprise E3
-$E5_SKU = "18a4bd3f-0b5b-4887-b04f-61dd0ee15f5e" # Enterprise E5
+$E3_SKU = "6fd2c87f-b296-42f0-b197-1e91e994b900" # Enterprise E3
+$E5_SKU = "c7df2760-2c81-4ef7-b578-5b5392b571df" # Enterprise E5
 
 # Define test user
-$testUserEmail = "amonroe@compassdatacenters.com" # Replace with your test user's email
+$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
 
 # Verify test user exists and has E3 license
 Write-Host "Checking test user $testUserEmail..."
@@ -63,7 +63,7 @@ else {
 
 # Final verification
 $finalUser = Get-MsolUser -UserPrincipalName $testUserEmail
-Write-Host "`nFinal license status for $testUserEmail:" -ForegroundColor Cyan
+Write-Host "`nFinal license status for $($testUserEmail):" -ForegroundColor Cyan
 $finalUser.Licenses | Format-Table -Property AccountSkuId
 
 Write-Host "Test completed!" -ForegroundColor Green
