@@ -14,8 +14,11 @@ Import-Module Microsoft.Graph.Identity.DirectoryManagement
 Connect-MgGraph -Scopes "User.ReadWrite.All", "Directory.ReadWrite.All"
 
 # Define SKU IDs
-$E3_SKU = "compassdatacenter:SPE_E3"
-$E5_SKU = "compassdatacenter:Microsoft_365_E5_(no_Teams)"
+
+$E3_SKU = "05e9a617-0261-4cee-bb44-138d3ef5d965" # Enterprise E3
+$E5_SKU = "18a4bd3f-0b5b-4887-b04f-61dd0ee15f5e" # Enterprise E5
+#$E3_SKU = "compassdatacenter:SPE_E3"
+#$E5_SKU = "compassdatacenter:Microsoft_365_E5_(no_Teams)"
 
 # Define test user
 $testUserEmail = "amadmin@compassdatacenters.com" # Replace with your test user's email
