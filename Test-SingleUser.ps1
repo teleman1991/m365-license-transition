@@ -18,7 +18,7 @@ $E3_SKU = "05e9a617-0261-4cee-bb44-138d3ef5d965"  # SPE_E3
 $E5_SKU = "18a4bd3f-0b5b-4887-b04f-61dd0ee15f5e"  # Microsoft_365_E5_(no_Teams)
 
 # Define test user
-$testUserEmail = "amadmin@compassdatacenters.com"
+$testUserEmail = "amonroe@compassdatacenters.com"
 
 # Get current user license state
 Write-Host "`nChecking current licenses for $($testUserEmail)..." -ForegroundColor Cyan
