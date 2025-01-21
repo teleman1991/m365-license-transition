@@ -2,8 +2,8 @@
 Connect-MsolService
 
 # Define SKU IDs for licenses
-$E3_SKU = "6fd2c87f-b296-42f0-b197-1e91e994b900" # Enterprise E3
-$E5_SKU = "c7df2760-2c81-4ef7-b578-5b5392b571df" # Enterprise E5
+$E3_SKU = "05e9a617-0261-4cee-bb44-138d3ef5d965" # Enterprise E3
+$E5_SKU = "18a4bd3f-0b5b-4887-b04f-61dd0ee15f5e" # Enterprise E5
 
 # Define test user
 $testUserEmail = "amadmin@compassdatacenters.com" # Replace with your test user's email
