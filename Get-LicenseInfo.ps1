@@ -1,25 +1,43 @@
-# Connect to Microsoft 365
-Connect-MsolService
+# Install and import Microsoft Graph modules if not already installed
+If (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Users)) {
+    Install-Module Microsoft.Graph.Users -Force
+}
+If (-not (Get-Module -ListAvailable -Name Microsoft.Graph.Identity.DirectoryManagement)) {
+    Install-Module Microsoft.Graph.Identity.DirectoryManagement -Force
+}
 
-# Get and display license information
-Write-Host "Getting available license information..." -ForegroundColor Yellow
-Get-MsolAccountSku | Format-Table -AutoSize AccountSkuId, SkuPartNumber, ActiveUnits, ConsumedUnits
+# Import required modules
+Import-Module Microsoft.Graph.Users
+Import-Module Microsoft.Graph.Identity.DirectoryManagement
 
-# Get detailed user license info for a test user
-$testUserEmail = "testuser@yourdomain.com" # Replace with your test user's email
-Write-Host "`nGetting license information for $testUserEmail..." -ForegroundColor Yellow
+# Connect to Microsoft Graph
+Connect-MgGraph -Scopes "User.ReadWrite.All", "Directory.ReadWrite.All"
 
-try {
-    $user = Get-MsolUser -UserPrincipalName $testUserEmail
-    Write-Host "`nLicenses assigned to $($user.UserPrincipalName):" -ForegroundColor Green
-    $user.Licenses | Format-Table -Property AccountSkuId, SkuPartNumber
+# Get all available SKUs and format them nicely
+Write-Host "`nAll available licenses in tenant:" -ForegroundColor Cyan
+$allSkus = Get-MgSubscribedSku
+$allSkus | Sort-Object -Property SkuPartNumber | Format-Table -Property SkuId, SkuPartNumber, ConsumedUnits, @{Name='AvailableUnits';Expression={$_.PrepaidUnits.Enabled - $_.ConsumedUnits}}
 
-    Write-Host "`nDetailed license information:" -ForegroundColor Green
-    foreach ($license in $user.Licenses) {
-        Write-Host "`nLicense: $($license.AccountSkuId)" -ForegroundColor Cyan
-        $license.ServiceStatus | Format-Table -AutoSize ServicePlan, ProvisioningStatus
+# Search for Teams Premium specifically
+Write-Host "`nSearching for Teams Premium licenses:" -ForegroundColor Yellow
+$teamsLicenses = $allSkus | Where-Object { 
+    $_.SkuPartNumber -like "*TEAMS*" -or 
+    $_.SkuPartNumber -like "*PREMIUM*" -or 
+    $_.ServicePlans.ServicePlanName -like "*TEAMS*PREMIUM*"
+}
+
+if ($teamsLicenses) {
+    Write-Host "Found potential Teams Premium licenses:" -ForegroundColor Green
+    $teamsLicenses | Format-Table -Property SkuId, SkuPartNumber
+    
+    # Show service plans for these licenses
+    foreach ($license in $teamsLicenses) {
+        Write-Host "`nService plans for $($license.SkuPartNumber) ($($license.SkuId)):" -ForegroundColor Cyan
+        $license.ServicePlans | Format-Table -Property ServicePlanId, ServicePlanName
     }
+} else {
+    Write-Host "No Teams Premium licenses found." -ForegroundColor Red
 }
-catch {
-    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
-}
+
+# Disconnect from Microsoft Graph
+Disconnect-MgGraph
